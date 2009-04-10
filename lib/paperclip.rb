@@ -242,7 +242,7 @@ module Paperclip
     def validates_attachment_presence name, options = {}
       message = options[:message] || "must be set."
       attachment_definitions[name][:validations][:presence] = lambda do |attachment, instance|
-        message unless attachment.file?
+        message unless attachment.file? || skip_validation?(options, instance)
       end
     end
     
@@ -261,13 +261,15 @@ module Paperclip
     # re-validation after the instance has been reloaded will always succeed.
     def validates_attachment_content_type name, options = {}
       attachment_definitions[name][:validations][:content_type] = lambda do |attachment, instance|
-        valid_types = [options[:content_type]].flatten
+        unless skip_validation?(options, instance)
+          valid_types = [options[:content_type]].flatten
         
-        unless attachment.original_filename.blank?
-          unless valid_types.blank?
-            content_type = attachment.instance_read(:content_type)
-            unless valid_types.any?{|t| content_type.nil? || t === content_type }
-              options[:message] || "is not one of the allowed file types."
+          unless attachment.original_filename.blank?
+            unless valid_types.blank?
+              content_type = attachment.instance_read(:content_type)
+              unless valid_types.any?{|t| content_type.nil? || t === content_type }
+                options[:message] || "is not one of the allowed file types."
+              end
             end
           end
         end
@@ -279,6 +281,17 @@ module Paperclip
     def attachment_definitions
       read_inheritable_attribute(:attachment_definitions)
     end
+    
+    def skip_validation? options, instance
+      return evaluate_proc(options[:unless], instance) if options[:unless]
+      return !evaluate_proc(options[:if], instance) if options[:if]
+    end
+    
+    def evaluate_proc proc, instance
+      return proc.call(instance) if proc.is_a?(Proc)
+      return instance.send(proc.to_s) if proc.is_a?(String) || proc.is_a?(Symbol)
+    end
+    
   end
 
   module InstanceMethods #:nodoc:

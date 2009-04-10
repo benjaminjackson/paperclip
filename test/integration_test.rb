@@ -285,6 +285,68 @@ class IntegrationTest < Test::Unit::TestCase
       @d2.avatar = @bad_file
       assert ! @d2.valid?
     end
+    
+    [:if, :unless].each do |condition_type|
+      should "skip validation when validates_attachment_presence is called with an :#{condition_type} option which evals to #{condition_type == :unless}" do
+        Dummy.validates_attachment_presence :avatar, condition_type => Proc.new { |instance| condition_type == :unless }
+        @d2 = Dummy.find(@dummy.id)
+        @d2.avatar = nil
+        assert  @d2.valid?, @d2.errors.full_messages.inspect 
+      end
+
+      should "skip validation when validates_attachment_presence is called with an :#{condition_type} callback which evals to #{condition_type == :unless}" do
+        Dummy.validates_attachment_presence :avatar, condition_type => :validate_attachment?
+        @d2 = Dummy.find(@dummy.id)
+        @d2.expects(:validate_attachment?).returns(condition_type == :unless)
+        @d2.avatar = nil
+        assert  @d2.valid?, @d2.errors.full_messages.inspect 
+      end
+
+      should "skip validation when validates_attachment_content_type is called with an :#{condition_type} option which evals to #{condition_type == :unless}" do
+        Dummy.validates_attachment_content_type :avatar, :content_type => %r{audio/.*}, condition_type => Proc.new { |instance| condition_type == :unless }
+        @d2 = Dummy.find(@dummy.id)
+        @d2.avatar = @file
+        assert   @d2.valid?, @d2.errors.full_messages.inspect 
+      end
+
+      should "skip validation when validates_attachment_content_type is called with an :#{condition_type} callback which evals to #{condition_type == :unless}" do
+        Dummy.validates_attachment_content_type :avatar, :content_type => %r{audio/.*}, condition_type => :validate_attachment?
+        @d2 = Dummy.find(@dummy.id)
+        @d2.expects(:validate_attachment?).returns(condition_type == :unless)
+        @d2.avatar = @file
+        assert   @d2.valid?, @d2.errors.full_messages.inspect 
+      end
+
+      should "not skip validation when validates_attachment_presence is called with an :#{condition_type} option which evals to #{condition_type != :unless}" do
+        Dummy.validates_attachment_presence :avatar, condition_type => Proc.new { |instance| condition_type != :unless }
+        @d2 = Dummy.find(@dummy.id)
+        @d2.avatar = nil
+        assert !@d2.valid?, @d2.errors.full_messages.inspect 
+      end
+
+      should "not skip validation when validates_attachment_presence is called with an :#{condition_type} callback which evals to #{condition_type != :unless}" do
+        Dummy.validates_attachment_presence :avatar, condition_type => :validate_attachment?
+        @d2 = Dummy.find(@dummy.id)
+        @d2.expects(:validate_attachment?).returns(condition_type != :unless)
+        @d2.avatar = nil
+        assert !@d2.valid?, @d2.errors.full_messages.inspect 
+      end
+
+      should "not skip validation when validates_attachment_content_type is called with an :#{condition_type} option which evals to #{condition_type != :unless}" do
+        Dummy.validates_attachment_content_type :avatar, :content_type => %r{audio/.*}, condition_type => Proc.new { |instance| condition_type != :unless }
+        @d2 = Dummy.find(@dummy.id)
+        @d2.avatar = @file
+        assert !@d2.valid?, @d2.errors.full_messages.inspect 
+      end
+
+      should "not skip validation when validates_attachment_content_type is called with an :#{condition_type} callback which evals to #{condition_type != :unless}" do
+        Dummy.validates_attachment_content_type :avatar, :content_type => %r{audio/.*}, condition_type => :validate_attachment?
+        @d2 = Dummy.find(@dummy.id)
+        @d2.expects(:validate_attachment?).returns(condition_type != :unless)
+        @d2.avatar = @file
+        assert !@d2.valid?, @d2.errors.full_messages.inspect 
+      end
+    end
 
     should "be able to reload without saving and not have the file disappear" do
       @dummy.avatar = @file
